@@ -150,13 +150,3 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-
-# JWT settings (optional, if you want to customize JWT behavior)
-import datetime
-JWT_AUTH = {
-    'JWT_SECRET_KEY': JWT_SECRET_KEY,
-    'JWT_ALGORITHM': 'HS256',
-    'JWT_ALLOW_REFRESH': True,
-    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),  # Token expires in 1 day
-    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=7),  # Refresh token expires in 7 days
-}

@@ -1,22 +1,33 @@
 # user/jwt_utils.py
+import os
 import jwt
 from datetime import datetime, timedelta
 from django.conf import settings
 
-# Secret key for signing the JWT tokens (you should store this in settings)
-SECRET_KEY = 'your-secret-key'  # Replace with a secure key in production
+# Secret key for signing JWT tokens (replace with a secure key in production)
+# SECRET_KEY = 'your-secret-key'
+SECRET_KEY=os.getenv('SECRET_KEY')
 
-def create_jwt_token(user_id, role):
+def create_jwt_tokens(user_id, role):
     """
-    Create a JWT token for the given user ID and role.
+    Create access and refresh tokens for the given user ID and role.
     """
-    payload = {
+    # Access token payload (expires in 15 minutes)
+    access_token_payload = {
         'user_id': user_id,
         'role': role,
-        'exp': datetime.utcnow() + timedelta(days=1)  # Token expires in 1 day
+        'exp': datetime.utcnow() + timedelta(minutes=15)  # Short-lived
     }
-    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-    return token
+    access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm='HS256')
+
+    # Refresh token payload (expires in 7 days)
+    refresh_token_payload = {
+        'user_id': user_id,
+        'exp': datetime.utcnow() + timedelta(days=7)  # Long-lived
+    }
+    refresh_token = jwt.encode(refresh_token_payload, SECRET_KEY, algorithm='HS256')
+
+    return access_token, refresh_token
 
 def decode_jwt_token(token):
     """
