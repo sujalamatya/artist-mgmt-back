@@ -21,8 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-cbvgs8qk=0nmido6jc_f=h0ae%7v)ya&3tdpnn(7*xt*it&x-$'
+# SECRET_KEY = 'django-insecure-cbvgs8qk=0nmido6jc_f=h0ae%7v)ya&3tdpnn(7*xt*it&x-$'
 
+SECRET_KEY=os.getenv('SECRET_KEY')
+JWT_SECRET_KEY=os.getenv('JWT_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -149,8 +151,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
-# REST_FRAMEWORK = {
-#     "DEFAULT_AUTHENTICATION_CLASSES": ("authentication.helpers.JWTAuthentication",),
-#     "EXCEPTION_HANDLER": "core.utils.utils.custom_exception_handler",
-#     "NON_FIELD_ERRORS_KEY": "errors",
-# }
+# JWT settings (optional, if you want to customize JWT behavior)
+import datetime
+JWT_AUTH = {
+    'JWT_SECRET_KEY': JWT_SECRET_KEY,
+    'JWT_ALGORITHM': 'HS256',
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),  # Token expires in 1 day
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=7),  # Refresh token expires in 7 days
+}

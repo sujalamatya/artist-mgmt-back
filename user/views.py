@@ -1,3 +1,4 @@
+# user/views.py
 from django.db import connection
 from django.http import JsonResponse
 from rest_framework.views import APIView
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.hashers import make_password, check_password
 from .serializers import UserSerializer
+from .jwt_utils import create_jwt_token, decode_jwt_token  # Import JWT utilities
 
 class RegisterView(APIView):
     def post(self, request):
@@ -68,10 +70,14 @@ class LoginView(APIView):
 
                 # Verify the password
                 if check_password(password, user_dict['password']):
-                    # Return success response
+                    # Generate JWT token
+                    token = create_jwt_token(user_dict['id'], user_dict['role'])
+
+                    # Return success response with JWT token
                     return Response(
                         {
                             "message": "Login successful",
+                            "token": token,
                             "user": {
                                 "id": user_dict['id'],
                                 "first_name": user_dict['first_name'],
@@ -94,3 +100,33 @@ class LoginView(APIView):
                     {"error": "User not found"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
+
+
+class ProtectedView(APIView):
+    def get(self, request):
+        # Get the token from the Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token = auth_header.split(' ')[1]
+        payload = decode_jwt_token(token)
+
+        if not payload:
+            return Response(
+                {"error": "Invalid or expired token"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Token is valid, return some protected data
+        return Response(
+            {
+                "message": "You have access to this protected resource",
+                "user_id": payload['user_id'],
+                "role": payload['role'],
+            },
+            status=status.HTTP_200_OK,
+        )
