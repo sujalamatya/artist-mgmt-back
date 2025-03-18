@@ -19,5 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('user.urls')), 
+    path('api/user/', include('user.urls')),  # Prefix for user app
+    path('api/artist/', include('artist.urls')),  # Prefix for artist app
+    path('api/artist/', include('music.urls')),  # Prefix for artist app
 ]
