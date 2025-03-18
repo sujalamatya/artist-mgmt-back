@@ -35,7 +35,7 @@ class ArtistListView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
-                        data.get('released', False),
+                        # data.get('released', False),
                     ]
                 )
                 artist_id = cursor.fetchone()[0]
@@ -70,7 +70,7 @@ class ArtistDetailView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
-                        data.get('released', False),
+                        # data.get('released', False),
                         artist_id,
                     ]
                 )

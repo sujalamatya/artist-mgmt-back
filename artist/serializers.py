@@ -8,6 +8,6 @@ class ArtistSerializer(serializers.Serializer):
     gender = serializers.CharField(max_length=10, required=False)
     first_release_year = serializers.IntegerField()
     no_of_albums = serializers.IntegerField()
-    released = serializers.BooleanField(default=False)
+    # released = serializers.BooleanField(default=False)
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
