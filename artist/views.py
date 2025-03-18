@@ -2,8 +2,7 @@ from django.db import connection
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializers import ArtistSerializer, MusicSerializer
-import json
+from .serializers import ArtistSerializer
 
 def dictfetchall(cursor):
     """Return all rows from a cursor as a list of dictionaries."""
@@ -82,33 +81,3 @@ class ArtistDetailView(APIView):
         with connection.cursor() as cursor:
             cursor.execute("DELETE FROM artist WHERE id = %s", [artist_id])
         return JsonResponse({"message": "Artist deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
-class MusicListView(APIView):
-    def get(self, request, artist_id):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
-            songs = dictfetchall(cursor)
-        serializer = MusicSerializer(songs, many=True)
-        return JsonResponse(serializer.data, safe=False)
-
-    def post(self, request, artist_id):
-        serializer = MusicSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO music (artist_id, title, album_name, genre)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id
-                    """,
-                    [
-                        artist_id,
-                        data['title'],
-                        data.get('album_name'),
-                        data['genre'],
-                    ]
-                )
-                song_id = cursor.fetchone()[0]
-            return JsonResponse({"id": song_id}, status=status.HTTP_201_CREATED)
-        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
