@@ -10,10 +10,14 @@ def dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 class MusicListView(APIView):
-    def get(self, request, artist_id):
+    def get(self, request, artist_id=None):
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
+            if artist_id:
+                cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
+            else:
+                cursor.execute("SELECT * FROM music")  # Fetch all songs
             songs = dictfetchall(cursor)
+        
         serializer = MusicSerializer(songs, many=True)
         return JsonResponse(serializer.data, safe=False)
 
