@@ -24,8 +24,8 @@ class ArtistListView(APIView):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO artist (name, dob, address, gender, first_release_year, no_of_albums, released)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO artist (name, dob, address, gender, first_release_year, no_of_albums)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     [
@@ -35,7 +35,6 @@ class ArtistListView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
-                        # data.get('released', False),
                     ]
                 )
                 artist_id = cursor.fetchone()[0]
@@ -60,7 +59,7 @@ class ArtistDetailView(APIView):
                 cursor.execute(
                     """
                     UPDATE artist
-                    SET name = %s, dob = %s, address = %s, gender = %s, first_release_year = %s, no_of_albums = %s, released = %s
+                    SET name = %s, dob = %s, address = %s, gender = %s, first_release_year = %s, no_of_albums = %s
                     WHERE id = %s
                     """,
                     [
@@ -70,7 +69,6 @@ class ArtistDetailView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
-                        # data.get('released', False),
                         artist_id,
                     ]
                 )
