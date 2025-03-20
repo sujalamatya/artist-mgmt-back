@@ -3,21 +3,46 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework import status
 from .serializers import ArtistSerializer
+from user.jwt_utils import decode_jwt_token
 
 def dictfetchall(cursor):
     """Return all rows from a cursor as a list of dictionaries."""
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
 class ArtistListView(APIView):
     def get(self, request):
+        # Require authentication
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token = auth_header.split(" ")[1]
+        user = decode_jwt_token(token)
+        if not user:
+            return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM artist")
             artists = dictfetchall(cursor)
+
         serializer = ArtistSerializer(artists, many=True)
         return JsonResponse(serializer.data, safe=False)
 
     def post(self, request):
+        # Require authentication
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token = auth_header.split(" ")[1]
+        user = decode_jwt_token(token)
+        if not user:
+            return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+     # Only artist managers and super_admin to add artists
+        if user["role"] not in ["artist_manager", "super_admin"]:
+            return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = ArtistSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
@@ -39,8 +64,8 @@ class ArtistListView(APIView):
                 )
                 artist_id = cursor.fetchone()[0]
             return JsonResponse({"id": artist_id}, status=status.HTTP_201_CREATED)
-        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class ArtistDetailView(APIView):
     def get(self, request, artist_id):
         with connection.cursor() as cursor:
