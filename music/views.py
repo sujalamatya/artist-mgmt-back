@@ -11,43 +11,50 @@ def dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 class MusicListView(APIView):
-   def get(self, request, artist_id=None):
-    # Extract and validate JWT token
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+    def get(self, request, artist_id=None):
+        # Extract and validate JWT token
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
-    token = auth_header.split(" ")[1]
-    user = decode_jwt_token(token)
-    if not user:
-        return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+        token = auth_header.split(" ")[1]
+        user = decode_jwt_token(token)
+        if not user:
+            return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-    search_query = request.GET.get("search", "").strip()  # Extract search query
-    artist_id = artist_id or request.GET.get("artist_id")  # Extract artist_id from URL or query param
+        # Extract query parameters
+        search_query = request.GET.get("search", "").strip()
+        artist_id = artist_id or request.GET.get("artist_id")
 
-    # Fetch music with search functionality
-    with connection.cursor() as cursor:
-        if artist_id:
-            if search_query:
-                cursor.execute(
-                    "SELECT * FROM music WHERE artist_id = %s AND title ILIKE %s",
-                    [artist_id, f"%{search_query}%"]
-                )
+        # Convert artist_id to integer (if exists)
+        try:
+            artist_id = int(artist_id) if artist_id else None
+        except ValueError:
+            return JsonResponse({"error": "Invalid artist_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch music with search functionality
+        with connection.cursor() as cursor:
+            if artist_id:
+                if search_query:
+                    cursor.execute(
+                        "SELECT * FROM music WHERE artist_id = %s AND title ILIKE %s",
+                        [artist_id, f"%{search_query}%"]
+                    )
+                else:
+                    cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
             else:
-                cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
-        else:
-            if search_query:
-                cursor.execute(
-                    "SELECT * FROM music WHERE title ILIKE %s",
-                    [f"%{search_query}%"]
-                )
-            else:
-                cursor.execute("SELECT * FROM music")
+                if search_query:
+                    cursor.execute(
+                        "SELECT * FROM music WHERE title ILIKE %s",
+                        [f"%{search_query}%"]
+                    )
+                else:
+                    cursor.execute("SELECT * FROM music")
 
-        songs = dictfetchall(cursor)
+            songs = dictfetchall(cursor)
 
-    serializer = MusicSerializer(songs, many=True)
-    return JsonResponse(serializer.data, safe=False)
+        serializer = MusicSerializer(songs, many=True)
+        return JsonResponse(serializer.data, safe=False)
 
     def post(self, request, artist_id):
         # Require authentication
