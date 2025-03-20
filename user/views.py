@@ -85,6 +85,7 @@ class LoginView(APIView):
                                 "email": user_dict['email'],
                                 "phone":user_dict['phone'],
                                 "gender":user_dict['gender'],
+                                "dob":user_dict['dob'],
                                 "address":user_dict['address'],
                                 "role": user_dict['role'],
                             },
