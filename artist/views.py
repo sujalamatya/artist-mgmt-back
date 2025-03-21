@@ -39,18 +39,20 @@ class ArtistListView(APIView):
         if not user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-     # Only artist managers and super_admin to add artists
-        if user["role"] not in ["artist_manager", "super_admin"]:
+        # Only artist managers, super_admin, and artists can add artists
+        if user["role"] not in ["artist_manager", "super_admin", "artist"]:
             return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ArtistSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
+            user_id = user["user_id"] if user["role"] == "artist" else None  # Set user_id for artists
+
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO artist (name, dob, address, gender, first_release_year, no_of_albums)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO artist (name, dob, address, gender, first_release_year, no_of_albums, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     [
@@ -60,9 +62,11 @@ class ArtistListView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
+                        user_id,  # Store user_id if the creator is an artist
                     ]
                 )
                 artist_id = cursor.fetchone()[0]
+            
             return JsonResponse({"id": artist_id}, status=status.HTTP_201_CREATED)
 
         return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
