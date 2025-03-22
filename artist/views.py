@@ -11,7 +11,6 @@ def dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 class ArtistListView(APIView):
     def get(self, request):
-        # Require authentication
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -29,7 +28,6 @@ class ArtistListView(APIView):
         return JsonResponse(serializer.data, safe=False)
 
     def post(self, request):
-        # Require authentication
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -39,14 +37,13 @@ class ArtistListView(APIView):
         if not user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Only artist managers, super_admin, and artists can add artists
         if user["role"] not in ["artist_manager", "super_admin", "artist"]:
             return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ArtistSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            user_id = user["user_id"] if user["role"] == "artist" else None  # Set user_id for artists
+            user_id = user["user_id"] if user["role"] == "artist" else None  
 
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -62,7 +59,7 @@ class ArtistListView(APIView):
                         data.get('gender'),
                         data['first_release_year'],
                         data['no_of_albums'],
-                        user_id,  # Store user_id if the creator is an artist
+                        user_id,  
                     ]
                 )
                 artist_id = cursor.fetchone()[0]

@@ -23,19 +23,19 @@ class MusicListView(APIView):
         if not user or "id" not in user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user_id = user["id"]  # Extract user ID from token
+        user_id = user["id"] 
         search_query = request.GET.get("search", "").strip()
         user_music = request.GET.get("user_music")  # Check if user wants their own music
         artist_id = artist_id or request.GET.get("artist_id")
 
-        # Convert artist_id to integer if provided
+        # Validate artist_id
         try:
             artist_id = int(artist_id) if artist_id else None
         except ValueError:
             return JsonResponse({"error": "Invalid artist_id"}, status=status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
-            if user_music:  # Fetch music for the logged-in user's artist profile
+            if user_music:  
                 cursor.execute(
                     """
                     SELECT m.* FROM music AS m
@@ -44,18 +44,28 @@ class MusicListView(APIView):
                     """,
                     [user_id]
                 )
-            elif artist_id:  # Fetch music for a specific artist
+            elif artist_id:
                 cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
-            else:  # Fetch all music
+            else:  
                 cursor.execute("SELECT * FROM music")
 
             songs = dictfetchall(cursor)
+
+        #  search filtering
+        if search_query:
+            search_query = search_query.lower()
+            songs = [
+                song for song in songs
+                if search_query in song["title"].lower() or
+                   search_query in (song.get("album_name") or "").lower() or
+                   search_query in song["genre"].lower()
+            ]
 
         serializer = MusicSerializer(songs, many=True)
         return JsonResponse(serializer.data, safe=False)
 
     def post(self, request, artist_id):
-        # Require authentication
+        # Authenticate the user
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -66,6 +76,7 @@ class MusicListView(APIView):
         if not user or "id" not in user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
+        # Only certain roles can add music
         if user["role"] not in ["artist_manager", "super_admin", "artist"]:
             return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
