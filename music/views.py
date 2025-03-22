@@ -12,44 +12,42 @@ def dictfetchall(cursor):
 
 class MusicListView(APIView):
     def get(self, request, artist_id=None):
-        # Extract and validate JWT token
+        # Authenticate the user
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
         token = auth_header.split(" ")[1]
         user = decode_jwt_token(token)
-        if not user:
+
+        if not user or "id" not in user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Extract query parameters
+        user_id = user["id"]  # Extract user ID from token
         search_query = request.GET.get("search", "").strip()
+        user_music = request.GET.get("user_music")  # Check if user wants their own music
         artist_id = artist_id or request.GET.get("artist_id")
 
-        # Convert artist_id to integer (if exists)
+        # Convert artist_id to integer if provided
         try:
             artist_id = int(artist_id) if artist_id else None
         except ValueError:
             return JsonResponse({"error": "Invalid artist_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Fetch music with search functionality
         with connection.cursor() as cursor:
-            if artist_id:
-                if search_query:
-                    cursor.execute(
-                        "SELECT * FROM music WHERE artist_id = %s AND title ILIKE %s",
-                        [artist_id, f"%{search_query}%"]
-                    )
-                else:
-                    cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
-            else:
-                if search_query:
-                    cursor.execute(
-                        "SELECT * FROM music WHERE title ILIKE %s",
-                        [f"%{search_query}%"]
-                    )
-                else:
-                    cursor.execute("SELECT * FROM music")
+            if user_music:  # Fetch music for the logged-in user's artist profile
+                cursor.execute(
+                    """
+                    SELECT m.* FROM music AS m
+                    INNER JOIN artist AS a ON m.artist_id = a.id
+                    WHERE a.user_id = %s
+                    """,
+                    [user_id]
+                )
+            elif artist_id:  # Fetch music for a specific artist
+                cursor.execute("SELECT * FROM music WHERE artist_id = %s", [artist_id])
+            else:  # Fetch all music
+                cursor.execute("SELECT * FROM music")
 
             songs = dictfetchall(cursor)
 
@@ -64,10 +62,10 @@ class MusicListView(APIView):
 
         token = auth_header.split(" ")[1]
         user = decode_jwt_token(token)
-        if not user:
+
+        if not user or "id" not in user:
             return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Only allow artist managers to add music
         if user["role"] not in ["artist_manager", "super_admin", "artist"]:
             return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
@@ -77,15 +75,15 @@ class MusicListView(APIView):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO music (artist_id, title, album_name, genre)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO music (artist_id, title, album_name, genre, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, NOW(), NOW())
                     RETURNING id
                     """,
                     [
                         artist_id,
-                        data['title'],
-                        data.get('album_name'),
-                        data['genre'],
+                        data["title"],
+                        data.get("album_name"),
+                        data["genre"],
                     ]
                 )
                 song_id = cursor.fetchone()[0]

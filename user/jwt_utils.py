@@ -1,29 +1,25 @@
-# user/jwt_utils.py
 import os
 import jwt
 from datetime import datetime, timedelta
 from django.conf import settings
 
-# Secret key for signing JWT tokens (replace with a secure key in production)
-# SECRET_KEY = 'your-secret-key'
-SECRET_KEY=os.getenv('SECRET_KEY')
+# Get secret key from environment variables or Django settings
+SECRET_KEY = os.getenv('SECRET_KEY', settings.SECRET_KEY)
 
 def create_jwt_tokens(user_id, role):
     """
     Create access and refresh tokens for the given user ID and role.
     """
-    # Access token payload (expires in 15 minutes)
     access_token_payload = {
-        'user_id': user_id,
+        'id': user_id,  # Standardizing to 'id' (matches your views)
         'role': role,
-        'exp': datetime.utcnow() + timedelta(minutes=15)  # Short-lived
+        'exp': datetime.utcnow() + timedelta(minutes=15)  # Expires in 15 minutes
     }
     access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm='HS256')
 
-    # Refresh token payload (expires in 7 days)
     refresh_token_payload = {
-        'user_id': user_id,
-        'exp': datetime.utcnow() + timedelta(days=7)  # Long-lived
+        'id': user_id,  # Standardizing to 'id'
+        'exp': datetime.utcnow() + timedelta(days=7)  # Expires in 7 days
     }
     refresh_token = jwt.encode(refresh_token_payload, SECRET_KEY, algorithm='HS256')
 
@@ -37,6 +33,6 @@ def decode_jwt_token(token):
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         return payload
     except jwt.ExpiredSignatureError:
-        return None  # Token has expired
+        return {"error": "Token has expired"}
     except jwt.InvalidTokenError:
-        return None  # Invalid token
+        return {"error": "Invalid token"}
