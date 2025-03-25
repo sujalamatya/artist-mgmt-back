@@ -147,8 +147,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AUTH_USER_MODEL = "users.CustomUser"
 
 ALLOWED_HOSTS = ["*"]
+CORS_ALLOW_ALL_ORIGINS = True  # Allow requests from all origins (or use specific ones)
+CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+# ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

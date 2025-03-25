@@ -65,7 +65,8 @@ class MusicListView(APIView):
         serializer = MusicSerializer(songs, many=True)
         return JsonResponse(serializer.data, safe=False)
 
-    def post(self, request):
+    def post(self, request, artist_id=None):
+        # Authentication
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -74,26 +75,38 @@ class MusicListView(APIView):
         user = decode_jwt_token(token)
 
         if not user or "id" not in user:
-            return JsonResponse({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+            return JsonResponse({"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user_id = user["id"]
-
-        if user["role"] not in ["artist_manager", "super_admin", "artist"]:
+        # Handle artist_id based on user role
+        if user["role"] == "artist":
+            # Artists can only create songs for themselves
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM artist WHERE user_id = %s", [user["id"]])
+                artist = cursor.fetchone()
+            
+            if not artist:
+                return JsonResponse({"error": "No artist profile found"}, status=status.HTTP_403_FORBIDDEN)
+            
+            artist_id = artist[0]
+        elif user["role"] in ["artist_manager", "super_admin"]:
+            # Admins can specify artist_id or create for themselves
+            if not artist_id:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT id FROM artist WHERE user_id = %s", [user["id"]])
+                    artist = cursor.fetchone()
+                artist_id = artist[0] if artist else None
+        else:
             return JsonResponse({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-        # Fetch artist_id for the logged-in user
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM artist WHERE user_id = %s", [user_id])
-            artist = cursor.fetchone()
+        if not artist_id:
+            return JsonResponse({"error": "Artist not specified"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not artist:
-            return JsonResponse({"error": "No associated artist found for this user"}, status=status.HTTP_403_FORBIDDEN)
-
-        artist_id = artist[0]  # Extract artist_id from the query result
-
+        # Create the song
         serializer = MusicSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
+        if not serializer.is_valid():
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
@@ -101,18 +114,14 @@ class MusicListView(APIView):
                     VALUES (%s, %s, %s, %s, NOW(), NOW())
                     RETURNING id
                     """,
-                    [
-                        artist_id,
-                        data["title"],
-                        data.get("album_name"),
-                        data["genre"],
-                    ]
+                    [artist_id, serializer.validated_data["title"], 
+                    serializer.validated_data.get("album_name"), 
+                    serializer.validated_data["genre"]]
                 )
                 song_id = cursor.fetchone()[0]
             return JsonResponse({"id": song_id}, status=status.HTTP_201_CREATED)
-
-        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def delete(self, request, song_id):
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
