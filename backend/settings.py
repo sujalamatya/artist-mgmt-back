@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'user',
     'artist',
     'music',
+    'events',
     "rest_framework",
     "corsheaders",
 ]
