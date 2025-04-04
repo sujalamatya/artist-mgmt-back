@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/user/', include('user.urls')),  # Prefix for user app
     path('api/artist/', include('artist.urls')),  # Prefix for artist app
     path('api/artist/', include('music.urls')),  # Prefix for artist app
+    path('api/events/', include('events.urls')),# Prefix for events app
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
